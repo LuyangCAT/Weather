@@ -28,7 +28,7 @@
         android:layout_toRightOf="@id/city_seperator"
         android:layout_gravity="center"
         android:paddingLeft="5dip"
-        android:paddingTop="9dip"
+        android:paddingTop="7dip"
         android:text="北京天气"
         android:textColor="#ffffffff"
        android:textSize="22.0sp" />
@@ -145,7 +145,7 @@
 
                      android:layout_marginTop="15dp"
                      android:src="@drawable/biz_plugin_weather_0_50"
-                     android:id="@+id/touxiang"
+                     android:id="@+id/pmImg"
                      />
 
                  </LinearLayout>
@@ -157,6 +157,7 @@
                  android:textColor="@android:color/white"
                  android:layout_marginTop="5dp"
                  android:layout_gravity="center_horizontal"
+                 android:id="@+id/pmQuality"
                  />
           </LinearLayout>
         <LinearLayout
@@ -194,8 +195,9 @@
                     android:layout_height="wrap_content"
                     android:text="-2℃~7℃"
                     android:textColor="@android:color/white"
-                    android:textSize="30sp"
+                    android:textSize="20sp"
                     android:id="@+id/temperature"
+                    android:singleLine="true"
                     />
                 <TextView
                     android:layout_height="wrap_content"

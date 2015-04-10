@@ -2,6 +2,8 @@ package cn.edu.pku.ss.zhangqx.weather;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.drawable.Drawable;
+import android.os.Message;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -9,8 +11,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
-
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -23,15 +28,42 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+//import java.util.logging.Handler;
+import java.lang.reflect.Field;
+import java.util.logging.LogRecord;
 import java.util.zip.GZIPInputStream;
 
 import cn.edu.pku.ss.zhangqx.weather.Util.NetUtil;
+import cn.edu.pku.ss.zhangqx.weather.Util.PinYin;
 import cn.edu.pku.ss.zhangqx.weather.bean.TodayWeather;
 
 
 public class MainActivity extends ActionBarActivity implements View.OnClickListener {
-    private ImageView mUpdateBtn;
-    private ImageView bbb;
+    private ImageView mUpdateBtn,bbb,weatherImg,pmImg;
+    private TextView cityTv,timeTv,humidityTv,weekTv,pmData,pmQualityTv,temperatureTv,climateTv,windTv;
+
+    void initView(){
+        cityTv=(TextView)findViewById(R.id.city);
+        timeTv=(TextView)findViewById(R.id.time);
+        humidityTv=(TextView)findViewById(R.id.hunidity);
+        weekTv=(TextView)findViewById(R.id.week_today);
+        pmData=(TextView)findViewById(R.id.pm_data);
+        pmQualityTv=(TextView)findViewById(R.id.pmQuality);
+        temperatureTv=(TextView)findViewById(R.id.temperature);
+        climateTv=(TextView)findViewById(R.id.climate);
+        windTv=(TextView)findViewById(R.id.wind);
+        weatherImg=(ImageView)findViewById(R.id.weather_img);
+        pmImg=(ImageView)findViewById(R.id.pmImg);
+        cityTv.setText("N/A");
+        timeTv.setText("N/A");
+        humidityTv.setText("N/A");
+        pmData.setText("N/A");
+        pmQualityTv.setText("N/A");
+        weekTv.setText("N/A");
+        temperatureTv.setText("N/A");
+        climateTv.setText("N/A");
+        windTv.setText("N/A");
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,7 +73,77 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         mUpdateBtn.setOnClickListener(this);
         bbb = (ImageView) findViewById(R.id.title_city_manager);
         bbb.setOnClickListener(this);
+        initView();
     }
+    void updateTodayWeather(TodayWeather todayWeather){
+        Log.d("myWeather",todayWeather.toString());
+        cityTv.setText(todayWeather.getCity());
+        timeTv.setText(todayWeather.getUpdatetime()+"发布");
+        humidityTv.setText("湿度:"+todayWeather.getShidu());
+        pmData.setText(todayWeather.getPm25());
+        pmQualityTv.setText(todayWeather.getQuality());
+        weekTv.setText(todayWeather.getDate());
+        temperatureTv.setText(todayWeather.getHigh()+"-"+todayWeather.getLow());
+        climateTv.setText(todayWeather.getType());
+        windTv.setText("风力："+todayWeather.getFengli());
+        //拼音反射方法换图片
+        int pmValue = Integer.parseInt(todayWeather.getPm25().trim());
+        String pmImgStr = "0_50";
+        if (pmValue>50 && pmValue < 201){
+              int startV = (pmValue - 1) / 50 * 50 + 1;
+              int endV = ((pmValue - 1) / 50 + 1) * 50;
+              pmImgStr = Integer.toString(startV) + "_" + endV;
+        }
+        else if (pmValue>=201 && pmValue < 301){
+               pmImgStr= "201_300";
+        }
+        else if (pmValue >= 301) {
+              pmImgStr = "greater_300";
+        }
+        String typeImg = "biz_plugin_weather_" + PinYin.converterToSpell(todayWeather.getType());
+        Class aClass = R.drawable.class;
+        int typeId = -1;
+        int pmImgId = -1;
+        try{
+                //一般尽量采用这种形式
+                Field field = aClass.getField(typeImg);
+                Object value = field.get(new Integer(0));
+                typeId = (int)value;
+                Field pmField = aClass.getField("biz_plugin_weather_" + pmImgStr);
+                Object pmImgO = pmField.get(new Integer(0));
+                pmImgId = (int) pmImgO;
+        }catch(Exception e){
+                //e.printStackTrace();
+                if ( -1 == typeId)
+                typeId = R.drawable.biz_plugin_weather_qing;
+                if ( -1 == pmImgId)
+                pmImgId= R.drawable.biz_plugin_weather_0_50;
+        }finally {
+                Drawable drawable = getResources().getDrawable(typeId);
+                weatherImg.setImageDrawable(drawable);
+                drawable = getResources().getDrawable(pmImgId);
+                pmImg.setImageDrawable(drawable);
+
+        }
+        //以上是人家的技术
+         Toast.makeText(MainActivity.this,"更新成功！",Toast.LENGTH_SHORT).show();
+    }
+    private static final int UPDATE_TODAY_WEATHER = 1;
+    private Handler mHandler = new Handler() {
+
+
+        public void handleMessage(Message msg){
+//            super.handleMessage(msg);
+
+            switch (msg.what){
+                case UPDATE_TODAY_WEATHER:
+                    updateTodayWeather((TodayWeather)msg.obj);
+                    break;
+                default:
+                    break;
+            }
+        }
+    };
 
 
     @Override
@@ -109,7 +211,14 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
                         }
                         String responseStr = response.toString();
                         Log.d("myWeather", responseStr);
-                        parseXML(responseStr);
+                        TodayWeather todayWeather=parseXML(responseStr);
+                        Log.d("myWeather",todayWeather.toString());
+                        if(todayWeather != null){
+                            Message msg= new Message();
+                            msg.what=UPDATE_TODAY_WEATHER;
+                            msg.obj=todayWeather;
+                            mHandler.sendMessage(msg);
+                        }
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -161,7 +270,7 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
                             } else if (xmlPullParser.getName().equals("pm25")) {
                                 eventType = xmlPullParser.next();
                                 todayWeather.setPm25(xmlPullParser.getText());
-                                Log.d("myapp", "pm25:" + xmlPullParser.getText());
+                                Log.d("myapp", "pm2.5:" + xmlPullParser.getText());
                             } else if (xmlPullParser.getName().equals("quality")) {
                                 eventType = xmlPullParser.next();
                                 todayWeather.setQuality(xmlPullParser.getText());
